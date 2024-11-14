@@ -136,7 +136,7 @@ def grab_banner(domain, port):
     finally:
         sock.close()
 
-# নতুন ফাংশন: URL Parameter Discovery
+# URL Parameter Discovery
 def discover_url_parameters(url):
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "http://" + url
@@ -165,7 +165,7 @@ def discover_url_parameters(url):
         print(f"An error occurred: {e}")
         return []
 
-# নতুন ফাংশন: Form Enumeration
+# Form Enumeration
 def enumerate_forms(url):
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "http://" + url
@@ -193,7 +193,7 @@ def enumerate_forms(url):
     except requests.RequestException as e:
         print(f"An error occurred: {e}")
 
-# নতুন ফাংশন: Hidden Parameter Discovery
+# Hidden Parameter Discovery
 def discover_hidden_parameters(url):
     if not url.startswith("http://") and not url.startswith("https://"):
         url = "http://" + url
@@ -221,10 +221,94 @@ def discover_hidden_parameters(url):
     except requests.RequestException as e:
         print(f"An error occurred: {e}")
 
+# Sensitive Directory Bruteforce
+def brute_force_directories(url):
+    sensitive_directories = ['admin', 'backup', 'config', 'db', 'logs']
+    found_sensitive_directories = []
+
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Bruteforcing Sensitive Directories ---")
+    for directory in sensitive_directories:
+        directory_url = f"{url}/{directory}"
+        try:
+            response = requests.get(directory_url)
+            if response.status_code == 200 or response.status_code in [301, 302]:
+                print(f"Found sensitive directory: {directory_url}")
+                found_sensitive_directories.append(directory_url)
+        except requests.ConnectionError:
+            pass
+
+    if not found_sensitive_directories:
+        print("No sensitive directories found.")
+    return found_sensitive_directories
+
+# JS File Scraping
+def scrape_js_files(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Scraping JavaScript Files ---")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            scripts = soup.find_all('script', src=True)
+            js_urls = [script['src'] for script in scripts if script['src'].endswith('.js')]
+
+            for js_url in js_urls:
+                if not js_url.startswith("http"):
+                    js_url = url + js_url
+                print(f"Found JavaScript file: {js_url}")
+
+                try:
+                    js_response = requests.get(js_url)
+                    hidden_params = re.findall(r'[?&](\w+)=', js_response.text)
+                    if hidden_params:
+                        print(f"Hidden parameters in {js_url}: {set(hidden_params)}")
+                except requests.RequestException:
+                    print(f"Could not scrape {js_url}")
+        else:
+            print(f"Failed to retrieve {url} - Status code: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+
+# CMS Detection
+def detect_cms(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Detecting CMS ---")
+    try:
+        response = requests.get(url)
+        if "wp-content" in response.text or "wordpress" in response.headers.get('X-Powered-By', '').lower():
+            print("Detected CMS: WordPress")
+        elif "drupal" in response.text or "drupal" in response.headers.get('X-Generator', '').lower():
+            print("Detected CMS: Drupal")
+        elif "Joomla" in response.text or "joomla" in response.headers.get('X-Content-Managed-By', '').lower():
+            print("Detected CMS: Joomla")
+        else:
+            print("CMS not detected.")
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+
+# Error Message Scanning
+def scan_error_messages(url):
+    error_triggers = ['', "'", '"', '<>', '<script>']
+    print("\n--- Scanning for Error Messages ---")
+    for trigger in error_triggers:
+        try:
+            response = requests.get(f"{url}?test={trigger}")
+            if "error" in response.text.lower() or "exception" in response.text.lower():
+                print(f"Potential error message found with trigger '{trigger}': {response.url}")
+        except requests.RequestException as e:
+            print(f"An error occurred: {e}")
+
 # URL ইনপুট নিন
 url = input("Enter the URL (e.g., example.com or https://example.com): ")
 
-# আগের সব ফাংশন চালান
+# সকল ফাংশন চালনা
 title = get_page_title(url)
 if title:
     print(f"\nPage Title: {title}")
@@ -242,3 +326,7 @@ enumerate_common_files(url)
 discover_url_parameters(url)
 enumerate_forms(url)
 discover_hidden_parameters(url)
+brute_force_directories(url)
+scrape_js_files(url)
+detect_cms(url)
+scan_error_messages(url)
