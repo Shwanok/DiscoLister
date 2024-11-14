@@ -19,12 +19,15 @@ def write_to_file(file_path, content):
 # পেজের টাইটেল খুঁজে বের করা
 def get_page_title(url, output_dir):
     try:
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "http://" + url  # স্কিম যোগ করা
         response = requests.get(url)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
             title = soup.title.string
-            write_to_file(f"{output_dir}/page_title.txt", f"Page Title: {title}")
-            print(f"Page Title: {title}")
+            output = f"Page Title: {title}"
+            print(output)
+            write_to_file(f"{output_dir}/page_title.txt", output)
         else:
             print(f"Failed to retrieve {url} - Status code: {response.status_code}")
     except requests.RequestException as e:
@@ -33,12 +36,14 @@ def get_page_title(url, output_dir):
 # HTTP হেডার সংগ্রহ করা
 def get_http_headers(url, output_dir):
     try:
+        if not url.startswith("http://") and not url.startswith("https://"):
+            url = "http://" + url
         response = requests.get(url)
         if response.status_code == 200:
             headers = response.headers
             header_content = "\n".join([f"{key}: {value}" for key, value in headers.items()])
+            print("HTTP Headers collected:\n", header_content)
             write_to_file(f"{output_dir}/http_headers.txt", header_content)
-            print("HTTP Headers collected.")
         else:
             print(f"Failed to retrieve {url} - Status code: {response.status_code}")
     except requests.RequestException as e:
@@ -49,8 +54,8 @@ def enumerate_subdomains(domain, output_dir):
     print("\n--- Enumerating Subdomains (using Assetfinder) ---")
     try:
         result = subprocess.run(['assetfinder', '--subs-only', domain], capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(f"{output_dir}/alive-subdomains.txt", result.stdout)
-        print("Subdomains saved to alive-subdomains.txt.")
     except Exception as e:
         print(f"Assetfinder not found or an error occurred: {e}")
 
@@ -59,8 +64,8 @@ def scan_open_ports(domain, output_dir):
     print("\n--- Scanning Open Ports (using Naabu) ---")
     try:
         result = subprocess.run(['naabu', '-host', domain], capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(f"{output_dir}/alive-hosts.txt", result.stdout)
-        print("Open ports saved to alive-hosts.txt.")
     except Exception as e:
         print(f"Naabu not found or an error occurred: {e}")
 
@@ -69,8 +74,8 @@ def probe_http(domain, output_dir):
     print("\n--- Probing HTTP Endpoints (using HTTPX) ---")
     try:
         result = subprocess.run(['httpx', '-silent', '-status-code', '-title', '-content-length', '-u', domain], capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(f"{output_dir}/alive-hosts.txt", result.stdout)
-        print("HTTP probes saved to alive-hosts.txt.")
     except Exception as e:
         print(f"HTTPX not found or an error occurred: {e}")
 
@@ -79,8 +84,8 @@ def fetch_wayback_urls(domain, output_dir):
     print("\n--- Fetching URLs from Wayback Machine (using waybackurls) ---")
     try:
         result = subprocess.run(['waybackurls', domain], capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(f"{output_dir}/uniq-wayback-urls.txt", result.stdout)
-        print("Wayback URLs saved to uniq-wayback-urls.txt.")
     except Exception as e:
         print(f"waybackurls not found or an error occurred: {e}")
 
@@ -89,8 +94,8 @@ def filter_with_gf(urls, pattern, output_file):
     print(f"\n--- Filtering URLs with GF (pattern: {pattern}) ---")
     try:
         result = subprocess.run(['gf', pattern], input=urls, capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(output_file, result.stdout)
-        print(f"Filtered parameters saved to {output_file}.")
     except Exception as e:
         print(f"GF not found or an error occurred: {e}")
 
@@ -99,8 +104,8 @@ def run_nuclei_scan(domain, output_dir):
     print("\n--- Running Vulnerability Scan (using Nuclei) ---")
     try:
         result = subprocess.run(['nuclei', '-u', domain], capture_output=True, text=True)
+        print(result.stdout)
         write_to_file(f"{output_dir}/nuclei_report.txt", result.stdout)
-        print("Nuclei scan results saved to nuclei_report.txt.")
     except Exception as e:
         print(f"Nuclei not found or an error occurred: {e}")
 
