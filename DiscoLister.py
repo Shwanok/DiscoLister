@@ -1,6 +1,7 @@
 import requests
 from bs4 import BeautifulSoup
 import socket
+import re
 
 # পেজের টাইটেল খুঁজে বের করা
 def get_page_title(url):
@@ -122,7 +123,7 @@ def enumerate_common_files(url):
         print("No common files found.")
     return found_files
 
-# নতুন ফাংশন: ব্যানার গ্র্যাবিং
+# ব্যানার গ্র্যাবিং
 def grab_banner(domain, port):
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -135,30 +136,109 @@ def grab_banner(domain, port):
     finally:
         sock.close()
 
+# নতুন ফাংশন: URL Parameter Discovery
+def discover_url_parameters(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Discovering URL Parameters ---")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            links = soup.find_all('a', href=True)
+            parameter_links = []
+
+            for link in links:
+                href = link['href']
+                if '?' in href:
+                    parameter_links.append(href)
+                    print(f"Found parameterized URL: {href}")
+            
+            if not parameter_links:
+                print("No parameterized URLs found.")
+            return parameter_links
+        else:
+            print(f"Failed to retrieve {url} - Status code: {response.status_code}")
+            return []
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+        return []
+
+# নতুন ফাংশন: Form Enumeration
+def enumerate_forms(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Enumerating Forms ---")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            forms = soup.find_all('form')
+
+            for i, form in enumerate(forms, 1):
+                print(f"\nForm #{i}")
+                action = form.get('action')
+                method = form.get('method', 'GET')
+                print(f"Action: {action}, Method: {method}")
+                inputs = form.find_all('input')
+                
+                for input_field in inputs:
+                    input_type = input_field.get('type', 'text')
+                    input_name = input_field.get('name')
+                    print(f"Input field - Type: {input_type}, Name: {input_name}")
+        else:
+            print(f"Failed to retrieve {url} - Status code: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+
+# নতুন ফাংশন: Hidden Parameter Discovery
+def discover_hidden_parameters(url):
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://" + url
+
+    print("\n--- Discovering Hidden Parameters ---")
+    try:
+        response = requests.get(url)
+        if response.status_code == 200:
+            soup = BeautifulSoup(response.text, 'html.parser')
+            forms = soup.find_all('form')
+
+            for i, form in enumerate(forms, 1):
+                hidden_inputs = form.find_all('input', {'type': 'hidden'})
+                
+                if hidden_inputs:
+                    print(f"\nForm #{i} - Hidden Fields Found:")
+                    for hidden_input in hidden_inputs:
+                        input_name = hidden_input.get('name')
+                        input_value = hidden_input.get('value', 'N/A')
+                        print(f"Hidden field - Name: {input_name}, Value: {input_value}")
+                else:
+                    print(f"Form #{i} - No hidden fields found.")
+        else:
+            print(f"Failed to retrieve {url} - Status code: {response.status_code}")
+    except requests.RequestException as e:
+        print(f"An error occurred: {e}")
+
 # URL ইনপুট নিন
 url = input("Enter the URL (e.g., example.com or https://example.com): ")
 
-# পেজের টাইটেল বের করা
+# আগের সব ফাংশন চালান
 title = get_page_title(url)
 if title:
     print(f"\nPage Title: {title}")
 else:
     print("Could not retrieve the page title.")
 
-# HTTP হেডার এবং সার্ভার ইনফরমেশন বের করা
 get_http_headers(url)
-
-# সাবডোমেইন এনুমারেশন
 domain = url.replace("https://", "").replace("http://", "")
 enumerate_subdomains(domain)
-
-# ডিরেক্টরি এনুমারেশন
 enumerate_directories(url)
-
-# ওপেন পোর্ট স্ক্যানিং এবং ব্যানার গ্র্যাবিং
 open_ports = scan_open_ports(domain)
 for port in open_ports:
     grab_banner(domain, port)
-
-# কমন ফাইল এনুমারেশন
 enumerate_common_files(url)
+discover_url_parameters(url)
+enumerate_forms(url)
+discover_hidden_parameters(url)
